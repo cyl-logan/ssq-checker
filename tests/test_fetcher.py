@@ -1,5 +1,7 @@
 """Tests for fetcher: parse data format, no network calls."""
-from ssq_checker.fetcher import parse_line
+import pytest
+
+from ssq_checker.fetcher import parse_all, parse_line
 
 
 def test_parse_real_line():
@@ -22,3 +24,31 @@ def test_strips_whitespace():
     line = "   2026070 2026-06-21 03 06 08 14 26 27 08   \n"
     d = parse_line(line)
     assert d.issue == "2026070"
+
+
+@pytest.mark.parametrize("bad", [
+    # path-traversal attempt in the date field
+    "2026070 ../../etc 03 06 08 14 26 27 08",
+    # malformed date
+    "2026070 2026/06/21 03 06 08 14 26 27 08",
+    # issue with letters
+    "abc2070 2026-06-21 03 06 08 14 26 27 08",
+    # ball with letters
+    "2026070 2026-06-21 03 06 0x 14 26 27 08",
+    # too few fields
+    "2026070 2026-06-21 03 06 08 14",
+])
+def test_parse_line_rejects_malformed(bad):
+    with pytest.raises(ValueError):
+        parse_line(bad)
+
+
+def test_parse_all_skips_malformed_silently():
+    text = (
+        "2026069 2025-12-30 01 02 03 04 08 09 07\n"
+        "garbage line that won't parse\n"
+        "2026070 ../../etc 03 06 08 14 26 27 08\n"  # rejected
+        "2026071 2026-06-23 11 12 13 14 15 16 08\n"
+    )
+    issues = [d.issue for d in parse_all(text)]
+    assert issues == ["2026069", "2026071"]

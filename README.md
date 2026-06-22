@@ -26,18 +26,41 @@ pip install -e .
 PYTHONPATH=src python -m ssq_checker
 ```
 
+## 投注表
+
+把你买的号码记在 `bets.csv` 里，随时改这个文件就改了投注。一注 2 元，**一期金额 = 2 × 倍数自动算**：
+
+```csv
+红球,蓝球,倍数
+01 02 03 04 08 09,07,1
+05 12 18 22 27 33,11,2
+```
+
+- 红球：6 个不重复的 1-33，空格分隔，放一个单元格
+- 蓝球：1 个 1-16
+- 倍数：整数，留空默认 1
+- `#` 开头的行和空行会被忽略
+
+可以用 Excel/Numbers 打开编辑，也可以直接文本编辑。
+
 ## 使用
 
-默认就是 Logan 的固定号码（红 01 02 03 04 08 09，蓝 07）：
+只要 `bets.csv` 存在，默认就读它、逐注比对、汇总总投入和总中奖：
 
 ```bash
 ssq-checker
 ```
 
-自定义号码：
+一次性查某组号码（不动投注表）：
 
 ```bash
 ssq-checker --reds 05 12 18 22 27 33 --blue 11
+```
+
+指定别的投注表：
+
+```bash
+ssq-checker --bets my-bets.csv
 ```
 
 JSON 输出（适合管道/解析）：
@@ -48,17 +71,22 @@ ssq-checker --json
 
 ## 输出示例
 
+读投注表（默认）：
+
 ```
 🎱 双色球第2026070期开奖（06月21日）
 
-🔴 红球：03 06 08 14 26 27
-🔵 蓝球：08
+🔴 红球：01 02 03 14 15 16
+🔵 蓝球：07
 
-你的号码：🔴 01 02 03 04 08 09  🔵 07
-红球命中：2个（03 08）
-蓝球命中：❌
+你的投注（共2注，总投入 ¥6）：
 
-中奖结论：未中奖
+① 🔴 01 02 03 04 08 09  🔵 07  ×2倍（¥4）
+   红球3个（01 02 03）｜蓝球✅ → 🎉 五等奖（¥10 ×2 = ¥20）
+② 🔴 05 12 18 22 27 33  🔵 11  ×1倍（¥2）
+   红球0个｜蓝球❌ → 未中奖
+
+总中奖：¥20
 ```
 
 ## 测试
@@ -95,9 +123,50 @@ cronjob(action='create', name='双色球',
 exec /home/logan/Projects/ssq-checker/venv/bin/ssq-checker
 ```
 
-### GitHub Actions
+### GitHub Actions（自动定时 + Telegram 投递）
 
-见 `.github/workflows/draw.yml`。注意：GH Actions schedule 触发延迟 5-15 分钟，对于 22:00 的播报不算严重，但要追求精确投递时间还是用本地调度更稳。
+见 `.github/workflows/draw.yml`。工作流在开奖日（周日/二/四）自动跑测试 + 抓开奖 + 发 Telegram。
+
+配置步骤：
+
+1. 找 [@BotFather](https://t.me/BotFather) 建一个 bot，拿到 token。
+2. 把 bot 拉进目标群/频道，拿到 chat_id（群是负数，如 `-1004407117408`）。
+3. 在 repo 的 **Settings → Secrets and variables → Actions** 加两个 secret：
+   - `TELEGRAM_BOT_TOKEN`
+   - `TELEGRAM_CHAT_ID`
+
+之后每次开奖都会自动播报（中没中都发）。也可在 Actions 页面手动 `workflow_dispatch` 触发测试。
+
+注意：GH Actions schedule 触发延迟 5-15 分钟，对于 22:00 的播报不算严重，但要追求精确投递时间还是用本地调度更稳。
+
+## 营收看板（GitHub Pages）
+
+每期开奖后，CI 会把这一期的结果记进**按月分区的历史**（`docs/data/YYYY-MM.json`），commit 回仓库，再部署成一个 GitHub Pages 页面，显示累计盈亏（挣还是亏）、曲线图、每期明细。
+
+关键设计：**每条记录按当时的号码和倍数冻结保存**。以后改 `bets.csv` 换号码，只影响之后的新期，过去的营收不会被重算。
+
+启用步骤：
+
+1. **Settings → Pages → Source** 选 **GitHub Actions**。
+2. 第一次去 **Actions → draw-check → Run workflow** 手动触发一次（`workflow_dispatch`），把自 2025-01-01 起的历史回填进 `docs/data/`（首次回填用当前 `bets.csv` 的号码作为近似）。
+3. 之后每个开奖日自动增量追加 + 重新部署。
+
+页面地址：`https://<用户名>.github.io/<仓库名>/`。
+
+手动同步历史（写到 `docs/data/`）：
+
+```bash
+ssq-checker --sync-history                       # 默认自 2025-01-01 起
+ssq-checker --sync-history --start-date 2025-03-01
+```
+
+### 命令行手动投递
+
+```bash
+TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=-1004407117408 ssq-checker --telegram
+```
+
+`--telegram` 会在打印报告之外，额外把同一份报告发到 Telegram。凭据缺失或投递失败时进程返回退出码 3。
 
 ## 奖级表（参考）
 

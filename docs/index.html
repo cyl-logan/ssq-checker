@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双色球营收</title>
+<style>
+  :root { color-scheme: light dark; --pos:#16a34a; --neg:#dc2626; --bg:#0b0e14; --card:#151a23; --fg:#e6e9ef; --muted:#8b94a7; --line:#263041; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+         background:var(--bg); color:var(--fg); padding:24px; }
+  .wrap { max-width:880px; margin:0 auto; }
+  h1 { font-size:20px; font-weight:600; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+  .hero { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px; text-align:center; margin-bottom:16px; }
+  .verdict { font-size:15px; color:var(--muted); margin-bottom:8px; }
+  .net { font-size:48px; font-weight:700; letter-spacing:-1px; }
+  .net.pos { color:var(--pos); } .net.neg { color:var(--neg); }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; text-align:center; }
+  .stat .v { font-size:22px; font-weight:600; } .stat .k { font-size:12px; color:var(--muted); margin-top:4px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .card h2 { font-size:14px; font-weight:600; color:var(--muted); margin:0 0 12px; text-transform:uppercase; letter-spacing:.5px; }
+  svg { width:100%; height:auto; display:block; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { padding:8px 10px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; }
+  td.pos { color:var(--pos); } td.neg { color:var(--neg); }
+  .tier { color:#eab308; }
+  .note { color:var(--muted); font-size:12px; margin-top:8px; }
+  .tablewrap { max-height:480px; overflow:auto; }
+  #err { color:var(--neg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎱 双色球营收</h1>
+  <div class="sub" id="sub">加载中…</div>
+  <div id="app"></div>
+  <div id="err"></div>
+</div>
+<script>
+// HTML-escape every value that came from the upstream feed — issue/date/best_tier
+// and the snapshot bets are user-controlled (a compromised data source could
+// otherwise inject script via innerHTML).
+const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ESC_MAP[c]);
+const fmt = n => (n < 0 ? "-" : "") + "¥" + Math.abs(Number(n) || 0).toLocaleString();
+
+function lineChart(records) {
+  const W = 800, H = 240, P = 36;
+  if (records.length === 0) return "";
+  const xs = records.map((_, i) => i);
+  const ys = records.map(r => r.cum_net);
+  const minY = Math.min(0, ...ys), maxY = Math.max(0, ...ys);
+  const spanY = (maxY - minY) || 1;
+  const px = i => P + (W - 2 * P) * (records.length === 1 ? 0.5 : i / (records.length - 1));
+  const py = v => P + (H - 2 * P) * (1 - (v - minY) / spanY);
+  const pts = records.map((r, i) => `${px(i).toFixed(1)},${py(r.cum_net).toFixed(1)}`).join(" ");
+  const zeroY = py(0);
+  const last = records[records.length - 1].cum_net;
+  const stroke = last >= 0 ? "var(--pos)" : "var(--neg)";
+  const areaPts = `${px(0)},${zeroY} ${pts} ${px(records.length - 1)},${zeroY}`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="累计盈亏曲线">
+    <line x1="${P}" y1="${zeroY}" x2="${W - P}" y2="${zeroY}" stroke="var(--line)" stroke-dasharray="4 4"/>
+    <polygon points="${areaPts}" fill="${stroke}" opacity="0.12"/>
+    <polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="2.5" stroke-linejoin="round"/>
+    <text x="${P}" y="16" fill="var(--muted)" font-size="12">${fmt(maxY)}</text>
+    <text x="${P}" y="${H - 6}" fill="var(--muted)" font-size="12">${fmt(minY)}</text>
+  </svg>`;
+}
+
+function render(manifest, records) {
+  const s = manifest.summary;
+  // Cumulative net is computed client-side so month files stay order-free.
+  records.sort((a, b) => (a.date + a.issue).localeCompare(b.date + b.issue));
+  let cum = 0;
+  const series = records.map(r => { cum += r.net; return { ...r, cum_net: cum }; });
+
+  const cb = manifest.current_bets || [];
+  // textContent is safe; no escaping needed here.
+  document.getElementById("sub").textContent =
+    `当前号码 🔴 ${cb.map(b => b.reds.join(" ")).join(" / ")}　🔵 ${cb.map(b => b.blue).join(" / ")}` +
+    `　×${cb.map(b => Number(b.multiplier) || 0).join("/")}倍　|　自 ${manifest.start_date} 起 ${s.draws} 期　|　更新于 ${String(manifest.generated_at || "").slice(0,10)}`;
+
+  const net = s.net;
+  const verdict = net > 0 ? "目前盈利 🎉" : net < 0 ? "目前亏损" : "目前持平";
+  const cls = net >= 0 ? "pos" : "neg";
+  const rows = [...series].reverse().map(r => `
+    <tr>
+      <td>${esc(r.issue)}<br><span style="color:var(--muted)">${esc(r.date)}</span></td>
+      <td>🔴 ${r.bets.map(b => b.reds.map(esc).join(" ")).join(" / ")} 🔵 ${r.bets.map(b => esc(b.blue)).join("/")} ×${r.bets.map(b => Number(b.multiplier) || 0).join("/")}</td>
+      <td>${fmt(r.cost)}</td>
+      <td>${r.won ? fmt(r.won) : "—"}${r.pool_win ? " +奖池" : ""}</td>
+      <td class="${r.net >= 0 ? "pos" : "neg"}">${fmt(r.net)}</td>
+      <td class="${r.cum_net >= 0 ? "pos" : "neg"}">${fmt(r.cum_net)}</td>
+      <td class="tier">${esc(r.best_tier || "")}</td>
+    </tr>`).join("");
+
+  document.getElementById("app").innerHTML = `
+    <div class="hero">
+      <div class="verdict">${verdict}</div>
+      <div class="net ${cls}">${fmt(net)}</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">${fmt(s.total_cost)}</div><div class="k">总投入</div></div>
+      <div class="stat"><div class="v">${fmt(s.total_won)}</div><div class="k">总中奖</div></div>
+      <div class="stat"><div class="v">${s.draws}</div><div class="k">期数</div></div>
+    </div>
+    <div class="card">
+      <h2>累计盈亏</h2>
+      ${lineChart(series)}
+    </div>
+    <div class="card">
+      <h2>每期明细</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>期号</th><th>号码</th><th>投入</th><th>中奖</th><th>当期</th><th>累计</th><th>奖级</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${s.pool_wins ? `<div class="note">注：有 ${s.pool_wins} 次中了一/二等奖（奖池浮动），金额未计入上方统计，以官方为准。</div>` : ""}
+      <div class="note">每条记录按当时的号码与倍数冻结保存；改号码只影响之后的期。一注 2 元。</div>
+    </div>`;
+}
+
+const bust = "?_=" + Date.now();
+const MONTH_RE = /^\d{4}-\d{2}$/;
+fetch("data/index.json" + bust)
+  .then(r => { if (!r.ok) throw new Error("index.json " + r.status); return r.json(); })
+  .then(manifest => {
+    const months = (manifest.months || []).filter(m => MONTH_RE.test(m));
+    return Promise.all(months.map(m =>
+      fetch(`data/${m}.json` + bust).then(r => r.json()).then(p => p.draws)
+    )).then(monthLists => render(manifest, monthLists.flat()));
+  })
+  .catch(e => {
+    document.getElementById("sub").textContent = "";
+    document.getElementById("err").textContent = "加载数据失败：" + e.message + "（首次需手动触发一次 workflow 生成历史）";
+  });
+</script>
+</body>
+</html>

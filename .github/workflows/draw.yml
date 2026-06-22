@@ -8,8 +8,19 @@ on:
   push:
     branches: [main]
 
+# contents:write 用于把新一期历史 commit 回仓库；pages/id-token 用于部署
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# 避免并发部署互相打断
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
-  check:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,12 +31,43 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         run: pytest -q
-      - name: Run checker
+
+      # 开奖日：播报 + 把新一期记进历史并提交回仓库（过去的记录冻结不变）
+      - name: Notify Telegram
         if: github.event_name != 'push'
-        run: ssq-checker | tee draw.txt
-      - name: Upload result
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: ssq-checker --telegram
+      - name: Sync profit/loss history
         if: github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        run: ssq-checker --sync-history
+      - name: Commit updated history
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Stage first so untracked new month files are included in the diff check.
+          git add docs/data
+          if ! git diff --cached --quiet -- docs/data; then
+            git commit -m "chore: update lottery history [skip ci]"
+            git push
+          else
+            echo "No history changes."
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: ssq-draw-${{ github.run_id }}
-          path: draw.txt
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

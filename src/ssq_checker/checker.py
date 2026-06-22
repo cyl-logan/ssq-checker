@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Set
+from typing import TYPE_CHECKING, List, Set, Tuple
 
 from .fetcher import Draw
+
+if TYPE_CHECKING:
+    from .bets import Bet
 
 
 # Official SSQ prize table (single-bet only; user's 6+1 ticket = one bet).
@@ -81,5 +84,69 @@ def format_report(draw: Draw, user_reds: List[str], user_blue: str, result: Priz
     else:
         amt = "奖池/浮动" if result.amount is None else f"¥{result.amount}"
         lines.append(f"中奖结论：🎉 {result.tier}（{amt}）")
+
+    return "\n".join(lines)
+
+
+def bet_winnings(result: PrizeResult, multiplier: int) -> int | None:
+    """Winnings for a bet at the given multiplier, in RMB.
+
+    Returns 0 for no prize, a positive int for fixed-amount tiers, and None for
+    pool-based tiers (一/二等奖) whose value can't be known here.
+    """
+    if result.tier is None:
+        return 0
+    if result.amount is None:
+        return None
+    return result.amount * multiplier
+
+
+def format_bets_report(draw: Draw, results: List[Tuple["Bet", PrizeResult]]) -> str:
+    """Format a report covering every bet in the user's table, with totals."""
+    reds_disp = " ".join(draw.reds_sorted)
+    date_short = draw.date[5:].replace("-", "月") + "日"
+
+    lines = [
+        f"🎱 双色球第{draw.issue}期开奖（{date_short}）",
+        "",
+        f"🔴 红球：{reds_disp}",
+        f"🔵 蓝球：{draw.blue}",
+        "",
+    ]
+
+    total_cost = sum(bet.cost for bet, _ in results)
+    lines.append(f"你的投注（共{len(results)}注，总投入 ¥{total_cost}）：")
+    lines.append("")
+
+    total_won = 0
+    has_pool_win = False
+    circled = "①②③④⑤⑥⑦⑧⑨⑩"
+
+    for idx, (bet, result) in enumerate(results):
+        marker = circled[idx] if idx < len(circled) else f"{idx + 1}."
+        won = bet_winnings(result, bet.multiplier)
+        hit_note = f"（{' '.join(result.red_matched)}）" if result.red_matched else ""
+        lines.append(
+            f"{marker} 🔴 {' '.join(bet.reds)}  🔵 {bet.blue}  ×{bet.multiplier}倍（¥{bet.cost}）"
+        )
+        status = (
+            f"红球{result.red_hits}个{hit_note}｜蓝球{'✅' if result.blue_hit else '❌'} → "
+        )
+        if result.tier is None:
+            status += "未中奖"
+        elif won is None:
+            has_pool_win = True
+            status += f"🎉 {result.tier}（奖池/浮动 ×{bet.multiplier}倍）"
+        else:
+            total_won += won
+            mult_note = f" ×{bet.multiplier} = ¥{won}" if bet.multiplier > 1 else ""
+            status += f"🎉 {result.tier}（¥{result.amount}{mult_note}）"
+        lines.append(f"   {status}")
+
+    lines.append("")
+    won_disp = f"¥{total_won}"
+    if has_pool_win:
+        won_disp += "（另有奖池/浮动大奖，金额以官方为准）"
+    lines.append(f"总中奖：{won_disp}")
 
     return "\n".join(lines)
