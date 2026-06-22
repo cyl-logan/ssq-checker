@@ -1,0 +1,31 @@
+name: draw-check
+
+on:
+  schedule:
+    # 周日/二/四 22:05 北京时间 = 14:05 UTC（开奖 21:15，留 50 分钟缓冲 + GH 调度延迟）
+    - cron: "5 14 * * 0,2,4"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -q
+      - name: Run checker
+        if: github.event_name != 'push'
+        run: ssq-checker | tee draw.txt
+      - name: Upload result
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssq-draw-${{ github.run_id }}
+          path: draw.txt
