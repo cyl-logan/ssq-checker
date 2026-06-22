@@ -1,0 +1,304 @@
+{
+  "month": "2025-11",
+  "draws": [
+    {
+      "issue": "2025126",
+      "date": "2025-11-02",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025127",
+      "date": "2025-11-04",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025128",
+      "date": "2025-11-06",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025129",
+      "date": "2025-11-09",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025130",
+      "date": "2025-11-11",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025131",
+      "date": "2025-11-13",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025132",
+      "date": "2025-11-16",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025133",
+      "date": "2025-11-18",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 25,
+      "net": 15,
+      "best_tier": "六等奖",
+      "pool_win": false
+    },
+    {
+      "issue": "2025134",
+      "date": "2025-11-20",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025135",
+      "date": "2025-11-23",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025136",
+      "date": "2025-11-25",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025137",
+      "date": "2025-11-27",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    },
+    {
+      "issue": "2025138",
+      "date": "2025-11-30",
+      "bets": [
+        {
+          "reds": [
+            "01",
+            "02",
+            "03",
+            "04",
+            "08",
+            "09"
+          ],
+          "blue": "07",
+          "multiplier": 5
+        }
+      ],
+      "cost": 10,
+      "won": 0,
+      "net": -10,
+      "best_tier": null,
+      "pool_win": false
+    }
+  ]
+}
