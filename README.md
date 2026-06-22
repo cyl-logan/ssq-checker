@@ -1,5 +1,7 @@
 # ssq-checker
 
+[![营收看板](https://img.shields.io/badge/%E8%90%A5%E6%94%B6%E7%9C%8B%E6%9D%BF-Pages-2ea44f?style=flat-square&logo=github)](https://cyl-logan.github.io/ssq-checker/)
+
 中国福利彩票双色球（SSQ）结果查询 + 中奖比对工具。**纯 Python stdlib，零运行时依赖。**
 
 ## 为什么有这个 repo
