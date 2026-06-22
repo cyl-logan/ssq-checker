@@ -1,9 +1,8 @@
 name: draw-check
 
 on:
-  schedule:
-    # Sun/Tue/Thu 22:05 Beijing = 14:05 UTC (draw at 21:15, buffer + GH delay)
-    - cron: "5 14 * * 0,2,4"
+  # Scheduling is driven by cron-job.org hitting the workflow_dispatch endpoint;
+  # GH's own schedule is removed to avoid duplicate runs (and its 5-15min delay).
   workflow_dispatch:
   push:
     branches: [master]
