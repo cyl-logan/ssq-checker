@@ -106,8 +106,8 @@ def test_manifest_summary_and_latest(tmp_path):
 
 def test_sync_preserves_generated_at_when_unchanged(tmp_path):
     draws = [_draw("2025001", "2025-01-02", ["11", "12", "13", "14", "15", "16"], "08")]
-    m1 = sync_history(str(tmp_path), draws, BETS_5X, "2025-01-01",
-                      generated_at="2025-01-01T00:00:00")
+    sync_history(str(tmp_path), draws, BETS_5X, "2025-01-01",
+                 generated_at="2025-01-01T00:00:00")
     # Second sync with a different `generated_at` — nothing else changed, so the
     # manifest's timestamp should be preserved (no spurious commit).
     m2 = sync_history(str(tmp_path), draws, BETS_5X, "2025-01-01",
@@ -127,6 +127,16 @@ def test_sync_updates_generated_at_when_new_draw(tmp_path):
                      generated_at="2026-09-09T09:09:09")
     assert m["added"] == 1
     assert m["generated_at"] == "2026-09-09T09:09:09"
+
+
+def test_sync_ignores_non_month_json(tmp_path):
+    # stats.json (and any other non-`YYYY-MM.json`) lives in the same dir and must
+    # not be loaded as a month record.
+    (tmp_path / "stats.json").write_text('{"total_draws": 1}', encoding="utf-8")
+    draws = [_draw("2025001", "2025-01-02", ["11", "12", "13", "14", "15", "16"], "08")]
+    m = sync_history(str(tmp_path), draws, BETS_5X, "2025-01-01")
+    assert m["summary"]["draws"] == 1
+    assert m["months"] == ["2025-01"]
 
 
 def test_pool_win_flagged_not_counted(tmp_path):

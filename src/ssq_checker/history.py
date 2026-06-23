@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from typing import Dict, List
 
@@ -21,6 +22,10 @@ from .checker import bet_winnings, check_prize
 from .fetcher import Draw
 
 TIER_RANK = {"一等奖": 1, "二等奖": 2, "三等奖": 3, "四等奖": 4, "五等奖": 5, "六等奖": 6}
+
+# Month files are exactly `YYYY-MM.json`; anything else in the data dir (index.json,
+# stats.json, stray files) must not be loaded as a month record.
+_MONTH_FILE_RE = re.compile(r"^\d{4}-\d{2}\.json$")
 
 
 def month_of(date: str) -> str:
@@ -62,7 +67,7 @@ def _load_months(data_dir: str) -> Dict[str, List[dict]]:
     if not os.path.isdir(data_dir):
         return months
     for name in os.listdir(data_dir):
-        if name == "index.json" or not name.endswith(".json"):
+        if not _MONTH_FILE_RE.match(name):
             continue
         with open(os.path.join(data_dir, name), encoding="utf-8") as f:
             payload = json.load(f)

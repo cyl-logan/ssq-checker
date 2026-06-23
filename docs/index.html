@@ -30,6 +30,10 @@
   .tier { color:#eab308; }
   .note { color:var(--muted); font-size:12px; margin-top:8px; }
   .tablewrap { max-height:480px; overflow:auto; }
+  .legend { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; margin:4px 0 12px; }
+  .legend .bar { height:10px; width:120px; border-radius:5px;
+    background:linear-gradient(90deg,hsl(210,70%,55%),hsl(120,70%,50%),hsl(0,75%,55%)); }
+  td.hot { color:var(--neg); font-weight:600; } td.cold { color:#3b82f6; font-weight:600; }
   #err { color:var(--neg); }
 </style>
 </head>
@@ -38,6 +42,7 @@
   <h1>🎱 双色球营收</h1>
   <div class="sub" id="sub">加载中…</div>
   <div id="app"></div>
+  <div id="stats"></div>
   <div id="err"></div>
 </div>
 <script>
@@ -69,6 +74,72 @@ function lineChart(records) {
     <text x="${P}" y="16" fill="var(--muted)" font-size="12">${fmt(maxY)}</text>
     <text x="${P}" y="${H - 6}" fill="var(--muted)" font-size="12">${fmt(minY)}</text>
   </svg>`;
+}
+
+// --- Red/blue ball distribution (frequency + omission) ---
+function heatBars(items, label) {
+  const W = 800, H = 200, P = 30;
+  const counts = items.map(d => Number(d.count) || 0);
+  const maxC = Math.max(1, ...counts), minC = Math.min(...counts);
+  const avg = counts.reduce((a, b) => a + b, 0) / (items.length || 1);
+  const n = items.length, bw = (W - 2 * P) / n;
+  const span = (maxC - minC) || 1;
+  const avgY = (H - P) - (H - 2 * P) * (avg / maxC);
+  const bars = items.map((d, i) => {
+    const c = Number(d.count) || 0;
+    const h = (H - 2 * P) * (c / maxC);
+    const x = P + i * bw, y = (H - P) - h;
+    const hue = 210 * (1 - (c - minC) / span);      // cold=blue(210) → hot=red(0)
+    const lbl = (i % (n > 20 ? 2 : 1) === 0)
+      ? `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 8}" fill="var(--muted)" font-size="9" text-anchor="middle">${esc(d.num)}</text>` : "";
+    return `<rect x="${(x + 1).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${h.toFixed(1)}" fill="hsl(${hue.toFixed(0)},70%,52%)" rx="2"><title>${esc(d.num)}：${c} 次</title></rect>${lbl}`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
+    <line x1="${P}" y1="${avgY.toFixed(1)}" x2="${W - P}" y2="${avgY.toFixed(1)}" stroke="var(--muted)" stroke-dasharray="4 4"/>
+    <text x="${W - P}" y="${(avgY - 4).toFixed(1)}" fill="var(--muted)" font-size="10" text-anchor="end">均值 ${avg.toFixed(0)}</text>
+    ${bars}</svg>`;
+}
+
+function statTable(items, total) {
+  const counts = items.map(d => Number(d.count) || 0);
+  const maxC = Math.max(...counts), minC = Math.min(...counts);
+  const rows = items.map(d => {
+    const c = Number(d.count) || 0;
+    const pct = total ? (c / total * 100).toFixed(1) : "0.0";
+    const cls = c === maxC ? "hot" : c === minC ? "cold" : "";
+    return `<tr>
+      <td><b>${esc(d.num)}</b></td>
+      <td class="${cls}">${c}</td>
+      <td>${pct}%</td>
+      <td>${Number(d.gap) || 0}</td>
+      <td>${Number(d.max_gap) || 0}</td>
+      <td>${esc(d.avg_gap)}</td>
+    </tr>`;
+  }).join("");
+  return `<div class="tablewrap"><table>
+    <thead><tr><th>号码</th><th>出现次数</th><th>出现概率</th><th>当前遗漏</th><th>最大遗漏</th><th>平均遗漏</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function renderStats(stats) {
+  // Coerce the feed-derived count to a finite number before it touches innerHTML.
+  const total = Number(stats && stats.total_draws) || 0;
+  if (!total) return;
+  const sp = stats.span || {};
+  const section = (title, items) => `
+    <div class="card">
+      <h2>${esc(title)}</h2>
+      ${heatBars(items, title)}
+      <div class="legend"><span>冷</span><span class="bar"></span><span>热</span><span>（颜色越红出现越多，虚线为均值）</span></div>
+      ${statTable(items, total)}
+    </div>`;
+  document.getElementById("stats").innerHTML = `
+    <div class="card" style="text-align:center">
+      <h2 style="margin-bottom:6px">号码分布统计</h2>
+      <div class="note">基于 ${total} 期历史（${esc(sp.first_date || "")} 至 ${esc(sp.last_date || "")}）。每期独立随机，统计仅供参考，不预测结果。</div>
+    </div>
+    ${section("红球分布 01–33", stats.reds || [])}
+    ${section("蓝球分布 01–16", stats.blue || [])}`;
 }
 
 function render(manifest, records) {
@@ -133,7 +204,14 @@ fetch("data/index.json" + bust)
     const months = (manifest.months || []).filter(m => MONTH_RE.test(m));
     return Promise.all(months.map(m =>
       fetch(`data/${m}.json` + bust).then(r => r.json()).then(p => p.draws)
-    )).then(monthLists => render(manifest, monthLists.flat()));
+    )).then(monthLists => {
+      render(manifest, monthLists.flat());
+      // Distribution stats are optional — render only if stats.json exists.
+      fetch("data/stats.json" + bust)
+        .then(r => (r.ok ? r.json() : null))
+        .then(renderStats)
+        .catch(() => {});
+    });
   })
   .catch(e => {
     document.getElementById("sub").textContent = "";

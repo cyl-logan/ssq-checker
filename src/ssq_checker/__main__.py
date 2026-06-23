@@ -16,6 +16,7 @@ from .checker import (
 from .fetcher import fetch_all_draws, fetch_latest_draw
 from .history import sync_history
 from .notify import send_telegram
+from .stats import write_stats
 
 DEFAULT_REDS = ["01", "02", "03", "04", "08", "09"]
 DEFAULT_BLUE = "07"
@@ -142,12 +143,14 @@ def _sync_history(args) -> int:
         return 2
 
     manifest = sync_history(args.data_dir, draws, bets, args.start_date)
+    stats = write_stats(args.data_dir, draws)
     s = manifest["summary"]
     verdict = "盈利" if s["net"] > 0 else ("持平" if s["net"] == 0 else "亏损")
     print(f"✅ 历史已同步到 {args.data_dir}（新增{manifest['added']}期，共{s['draws']}期）："
           f"投入¥{s['total_cost']}，中奖¥{s['total_won']}，"
           f"净{verdict} ¥{abs(s['net'])}"
           + (f"（另有{s['pool_wins']}次奖池大奖未计入）" if s["pool_wins"] else ""))
+    print(f"✅ 号码分布统计已更新（统计 {stats['total_draws']} 期）。")
     return 0
 
 
